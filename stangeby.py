@@ -118,7 +118,7 @@ class Stangeby:
         '''
 
         self.max_u = self.mach_critical if stangeby else 1
-        self.zeta = [integrate.fixed_quad(self.__integrand_u__, u, self.max_u, n=500)[0] for u in self.u]
+        self.zeta = np.array([integrate.fixed_quad(self.__integrand_u__, u, self.max_u, n=500)[0] for u in self.u])
 
         return self.zeta
 
@@ -134,20 +134,7 @@ class Stangeby:
 
         # conversion function of w
         f_w = lambda u: (2. - (u + 1. / u) * np.sin(self.alpha)) / np.cos(self.alpha)
-        self.w = [f_w(u) for u in self.u]
-
-        return self.w
-
-    def get_w(self):
-        '''
-
-        Finds the values of the drift velocity in ExB planes in the direction parallel to the wall
-        -----------------------------------------------------
-        '''
-
-        # conversion function of w
-        f_w = lambda u: (2. - (u + 1. / u) * np.sin(self.alpha)) / np.cos(self.alpha)
-        self.w = [f_w(u) for u in self.u]
+        self.w = np.array([f_w(u) for u in self.u])
 
         return self.w
 
@@ -164,7 +151,7 @@ class Stangeby:
         if self.w is None:
             self.get_w()
 
-        self.v = [f_v(u, w) for u, w in zip(self.u, self.v)]
+        self.v = np.array([f_v(u, w) for u, w in zip(self.u, self.w)])
         return self.v
 
     def get_potential(self):
@@ -194,23 +181,24 @@ class Stangeby:
             self.get_potential()
 
         # evaulate potential
-        self.density = [np.exp(potential / scale) for potential in self.potential]
+        self.density = np.array([np.exp(potential / scale) for potential in self.potential])
 
         return self.density
 
     def execute(self):
 
         self.get_zeta()
-        self.get_w()
+        self.get_v()
         self.get_density()
 
 
 if __name__ == '__main__':
 
-
+    #TODO remove
+    # test output
     T_e = 1
     T_i = 1
     m_i = 2
     alpha = 2
     model = Stangeby(T_e, T_i, m_i, alpha)
-    print(model.zeta)
+    #print(model.zeta)

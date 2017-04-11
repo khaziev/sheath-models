@@ -182,6 +182,7 @@ class Stangeby:
 
         # evaulate potential
         self.density = np.array([np.exp(potential / scale) for potential in self.potential])
+        self.density /= self.density[0]
 
         return self.density
 

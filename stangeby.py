@@ -73,7 +73,7 @@ class Stangeby:
         :return:
         '''
 
-        self.u_min = optimize.newton(self.__func_f__, 0.1)
+        self.u_min = 1.001 *optimize.newton(self.__func_f__, 0.1)
 
 
 
@@ -202,4 +202,4 @@ if __name__ == '__main__':
     m_i = 2
     alpha = 2
     model = Stangeby(T_e, T_i, m_i, alpha)
-    #print(model.zeta)
+    print(model.zeta)

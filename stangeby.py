@@ -1,5 +1,6 @@
 import numpy as np
 import scipy.constants as const
+from scipy import optimize
 from scipy import integrate
 
 class Stangeby:
@@ -27,6 +28,13 @@ class Stangeby:
         self.gamma = gamma
         self.c = c
 
+        #initialize drift velocty parameters:
+        self.w = None
+        self.v = None
+        self.u = None
+        self.potential = None
+        self.density = None
+
         #calcualte alpha and m_i in physical units
         self.m_i = self.m_i_amu *1e-3/const.N_A
         self.alpha = self.alpha_deg * np.pi/180
@@ -46,12 +54,28 @@ class Stangeby:
         #calculate mach number at the wall
         self.mach_critical = np.sin(self.alpha) / np.sqrt(temp)
 
+        #calculate min value of u
+        self.__min_u__()
 
         #setup space for u
         if log_u:
-            self.u = np.logspace(1e-3, self.mach_critical, n)
+            self.u = np.logspace(np.log10(self.u_min), np.log10(self.mach_critical), n)
         else:
-            self.u = np.linspace(0, self.mach_critical, n)
+            self.u = np.linspace(self.u_min, self.mach_critical, n)
+
+        #execute the model
+        self.execute()
+
+
+    def __min_u__(self):
+        '''
+        Finds minumal resolvable values of u
+        :return:
+        '''
+
+        self.u_min = optimize.newton(self.__func_f__, 0.1)
+
+
 
     def __func_f__(self, u):
         '''
@@ -93,9 +117,92 @@ class Stangeby:
         :params stangeby: boolean, if True use classical model
         '''
 
-        max_u = self.mach_critical if stangeby else 1
-        result = [integrate.fixed_quad(self.__integrand_u__, u, max_u, n=500)[0] for u in self.u]
-        return result
+        self.max_u = self.mach_critical if stangeby else 1
+        self.zeta = [integrate.fixed_quad(self.__integrand_u__, u, self.max_u, n=500)[0] for u in self.u]
+
+        return self.zeta
+
+    def get_w(self):
+        '''
+
+        Finds the values of the drift velocity in ExB planes in the direction parallel to the wall
+        -----------------------------------------------------
+
+        u_space - sequence (ex. list, np.array), contains values between 0 and 1
+        plasma_params - dictionary like
+        '''
+
+        # conversion function of w
+        f_w = lambda u: (2. - (u + 1. / u) * np.sin(self.alpha)) / np.cos(self.alpha)
+        self.w = [f_w(u) for u in self.u]
+
+        return self.w
+
+    def get_w(self):
+        '''
+
+        Finds the values of the drift velocity in ExB planes in the direction parallel to the wall
+        -----------------------------------------------------
+        '''
+
+        # conversion function of w
+        f_w = lambda u: (2. - (u + 1. / u) * np.sin(self.alpha)) / np.cos(self.alpha)
+        self.w = [f_w(u) for u in self.u]
+
+        return self.w
+
+    def get_v(self):
+        '''
+
+        Finds the values of the drift velocity in the direction of ExB drift
+        -----------------------------------------------------
+        '''
+
+        # conversion function for v
+        f_v = lambda u, w: np.sqrt(2 * np.log(u / np.sin(self.alpha)) + 1 - u ** 2 - w ** 2)
+
+        if self.w is None:
+            self.get_w()
+
+        self.v = [f_v(u, w) for u, w in zip(self.u, self.v)]
+        return self.v
+
+    def get_potential(self):
+        '''
+
+        Calculates plasma potential in physical units
+        '''
+
+        # scale for plasma potential
+        scale = -self.T_e
+
+        # evaulate potential
+        self.potential = [scale * np.log(u) for u in self.u]
+
+        return self.potential
+
+    def get_density(self):
+        '''
+
+        Calculates plasma potential in relative units
+        '''
+
+        # scale for electrostatic potential
+        scale = self.T_e
+
+        if self.potential is None:
+            self.get_potential()
+
+        # evaulate potential
+        self.density = [np.exp(potential / scale) for potential in self.potential]
+
+        return self.density
+
+    def execute(self):
+
+        self.get_zeta()
+        self.get_w()
+        self.get_density()
 
 
 if __name__ == '__main__':
@@ -106,5 +213,4 @@ if __name__ == '__main__':
     m_i = 2
     alpha = 2
     model = Stangeby(T_e, T_i, m_i, alpha)
-    result = model.get_zeta()
-    print(result)
+    print(model.zeta)

@@ -6,7 +6,7 @@ from scipy import integrate
 class Stangeby:
     #plasma_params = {'T_e': 1., 'T_i': 1., 'm_i': 2e-3 / const.N_A, 'gamma': 1, 'c': 1., 'alpha': np.pi / 180 * 1}
 
-    def __init__(self, T_e, T_i, m_i, alpha, B=None, gamma=1, c=1, n = 100, log_u = True):
+    def __init__(self, T_e, T_i, m_i, B, alpha=None, gamma=1, c=1, n = 100, log_u = True):
 
         '''
 
@@ -25,14 +25,21 @@ class Stangeby:
         self.T_e = T_e
         self.T_i = T_i
         self.m_i_amu = m_i
-        self.alpha_deg = alpha
         self.gamma = gamma
         self.c = c
 
-        if B is None:
-            self.B = np.zeros(3)
+        if len(B) != 3:
+            raise Exception("B's dimensionality is not 3: {0}".format(B))
         else:
             self.B = np.array(B)
+
+            #self scheck for B
+            alpha_B = np.arctan2(B[2], B[0]) *180/np.pi
+
+            if alpha is None:
+                self.alpha_deg = alpha_B
+            elif abs(alpha_B - alpha) > 1e-2:
+                raise Exception("Alpha does not agree with B: alpha={0}, alpha_b={1}".format(alpha, alpha_B))
 
         #initialize drift velocty parameters:
         self.w = None
@@ -192,7 +199,6 @@ class Stangeby:
         self.__get_scales__()
 
         #get physical zeta
-        print(type(self.zeta))
         self.z = self.zeta * self.zeta_scale
 
         #get scale velocity

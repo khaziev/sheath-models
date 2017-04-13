@@ -40,6 +40,8 @@ class Stangeby:
                 self.alpha_deg = alpha_B
             elif abs(alpha_B - alpha) > 1e-2:
                 raise Exception("Alpha does not agree with B: alpha={0}, alpha_b={1}".format(alpha, alpha_B))
+            else:
+                self.alpha_deg = alpha
 
         #initialize drift velocty parameters:
         self.w = None
@@ -187,7 +189,7 @@ class Stangeby:
         self.omega = self.B *const.e /self.m_i
 
         #Bohm velocity
-        self.acoustic_velocity = np.sqrt(const.k * (self.T_e + self.gamma *self.T_i) /self.m_i)
+        self.acoustic_velocity = np.sqrt(const.e * (self.T_e + self.gamma *self.T_i) /self.m_i)
 
         #find the scale for zeta -> z
         self.zeta_scale = self.acoustic_velocity / self.omega[0]

@@ -2,6 +2,7 @@ import numpy as np
 import scipy.constants as const
 from scipy import optimize
 from scipy import integrate
+import pandas as pd
 
 class Stangeby:
     #plasma_params = {'T_e': 1., 'T_i': 1., 'm_i': 2e-3 / const.N_A, 'gamma': 1, 'c': 1., 'alpha': np.pi / 180 * 1}
@@ -179,7 +180,8 @@ class Stangeby:
         scale = -self.T_e
 
         # evaulate potential
-        self.potential = [scale * np.log(u) for u in self.u]
+        self.potential = np.array([scale * np.log(u) for u in self.u])
+        self.potential -= self.potential[-1]
 
         return self.potential
 
@@ -225,6 +227,54 @@ class Stangeby:
         self.density /= self.density[0]
 
         return self.density
+
+    def get_sheath_df(self, geometry = 'khaziev', save=False, path='sheath-report.csv'):
+
+        '''
+        Write the result of the sheath model to the dataframe and write the file
+        :param geometry: khaziev or stangeby
+        :param save: boolean
+        :param path: path to the report file
+        :return:
+        '''
+
+        if geometry == 'khaziev':
+            self.df_sheath = self.__get_sheath_df_khaziev__()
+        elif geometry == 'stangeby':
+            self.df_sheath = self.__get_sheath_df_stangeby__()
+        else:
+            raise Exception('Provided model is incorrect')
+
+        if save:
+            self.df_sheath.to_csv(path, index=False)
+
+
+    def __get_sheath_df_stangeby__(self):
+        df_sheath = pd.DataFrame({'z': self.z,
+                                  'V_z': self.u_physical,
+                                  'V_x': self.w_physical,
+                                  'V_y': self.v_physical,
+                                  'potential': self.potential,
+                                  'density': self.density})
+
+        columns = ['z', 'V_x', 'V_y', 'V_z', 'potential', 'density']
+        self.df_sheath_stangeby = df_sheath[columns]
+
+        return self.df_sheath_stangeby
+
+    def __get_sheath_df_khaziev__(self):
+        df_sheath = pd.DataFrame({'z': self.z,
+                                  'V_z': self.u_physical,
+                                  'V_x': self.w_physical,
+                                  'V_y': self.v_physical,
+                                  'potential': self.potential,
+                                  'density': self.density})
+
+        columns = ['z', 'V_x', 'V_y', 'V_z', 'potential', 'density']
+        self.df_sheath_khaziev = df_sheath[columns]
+        return self.df_sheath_khaziev
+
+
 
     def execute(self):
 

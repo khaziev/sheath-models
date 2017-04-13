@@ -6,7 +6,7 @@ from scipy import integrate
 class Stangeby:
     #plasma_params = {'T_e': 1., 'T_i': 1., 'm_i': 2e-3 / const.N_A, 'gamma': 1, 'c': 1., 'alpha': np.pi / 180 * 1}
 
-    def __init__(self, T_e, T_i, m_i, alpha, gamma=1, c=1, n = 100, log_u = True):
+    def __init__(self, T_e, T_i, m_i, alpha, B=None, gamma=1, c=1, n = 100, log_u = True):
 
         '''
 
@@ -18,6 +18,7 @@ class Stangeby:
         :param c: supersonic criterion
         :param n: integer, number of point in definition of u
         :param log_u: use log space for u
+        :param B: magnetic field, sequence of size 3
         '''
 
         #write initial parameters to the class
@@ -27,6 +28,11 @@ class Stangeby:
         self.alpha_deg = alpha
         self.gamma = gamma
         self.c = c
+
+        if B is None:
+            self.B = np.zeros(3)
+        else:
+            self.B = np.array(B)
 
         #initialize drift velocty parameters:
         self.w = None
@@ -168,6 +174,32 @@ class Stangeby:
 
         return self.potential
 
+    def __get_scales__(self):
+
+        #cyclotron frequency vector
+        self.omega = self.B *const.e /self.m_i
+
+        #Bohm velocity
+        self.acoustic_velocity = np.sqrt(const.k * (self.T_e + self.gamma *self.T_i) /self.m_i)
+
+        #find the scale for zeta -> z
+        self.zeta_scale = self.acoustic_velocity / self.omega[0]
+
+        self.v_scale = self.w_scale = self.u_scale = self.acoustic_velocity
+
+    def get_physical_value(self):
+
+        self.__get_scales__()
+
+        #get physical zeta
+        print(type(self.zeta))
+        self.z = self.zeta * self.zeta_scale
+
+        #get scale velocity
+        self.w_physical = self.w *self.w_scale
+        self.v_physical = self.v *self.v_scale
+        self.u_physical = self.u *self.u_scale
+
     def get_density(self):
         '''
 
@@ -191,6 +223,7 @@ class Stangeby:
         self.get_zeta()
         self.get_v()
         self.get_density()
+        self.get_physical_value()
 
 
 if __name__ == '__main__':

@@ -49,7 +49,7 @@ class Zimmerman:
 
         return result
 
-    def __dynamic_stepping__(self, y, y_prev, dx_prev, dx_min=1e-5, dx_max=10, dy=5e-4):
+    def __dynamic_stepping__(self, y, y_prev, dx_prev, dx_min=1e-10, dx_max=10, dy=5e-3):
 
         '''
 
@@ -61,7 +61,8 @@ class Zimmerman:
         :param dy: float, target change in y
         :return:
         '''
-        grad = np.abs(y[0] - y_prev[0]) / dx_prev
+        #grad = np.mean(np.abs(y - y_prev) / dx_prev)
+        grad = np.max(np.abs(y - y_prev) / dx_prev)
         dx = dy / grad
 
         if dx < dx_min:
@@ -73,7 +74,7 @@ class Zimmerman:
 
         return dx
 
-    def __initial_step__(self, ys=[1e-2, 1e-6], deltas=[0, 10]):
+    def __initial_step__(self, ys=[1e-2, 1e-6], deltas=[0, 1]):
 
         '''
         Zimmerman solver is sensitive for values of y0 for small delta.
@@ -87,7 +88,7 @@ class Zimmerman:
         elif deltas[1] < self.delta:
             y0 = ys[1]
         else:
-            y0 = 0
+            y0 = ys[0]
             raise Exception('delta is negative')
 
         self.y0 = y0 *np.ones(4)
@@ -96,21 +97,33 @@ class Zimmerman:
 
     def get_smoothness(self):
 
-        diff = np.abs(np.diff(self.y, axis=0, n=1))
-        self.smoothness = np.max(diff)
+        diff = np.diff(self.y, axis=0, n=1)
+        self.smoothness = np.std(diff)
         return self.smoothness
 
-    def solve(self, x0=0, vx_max=1, dx=1e-3, nsteps=10000):
+    def solve(self, x0=0, vx_max=1, dx=1e-8, nsteps=10000, nmax=10000):
 
         integrator = ode(self.__gradient__).set_integrator('dop853', nsteps=nsteps)
         integrator.set_initial_value(self.y0, x0)
+
+        if self.omega_tau >= 100:
+            dx = 1/self.omega_tau / 1e4
+        else:
+            dx = 1e-6
+
+
+        #print(dx)
 
         x = [x0]
         y = [self.y0]
 
         soln = self.y0
 
-        while integrator.successful() and soln[0] <= vx_max:
+        self.steps = [dx]
+
+
+        while soln[0] <= vx_max and integrator.successful():
+
             time = integrator.t + dx
 
             soln = integrator.integrate(time)
@@ -120,6 +133,31 @@ class Zimmerman:
 
             dx = self.__dynamic_stepping__(y[-1], y[-2], dx)
 
+            self.steps.append(dx)
+
+        # time = 0
+        # n = 0
+        # while soln[0] <= vx_max and n < nmax:
+        #     time += dx
+        #
+        #     soln = integrator.integrate(time)
+        #
+        #     if integrator.successful():
+        #
+        #         x.append(time)
+        #         y.append(soln)
+        #
+        #         dx = self.__dynamic_stepping__(y[-1], y[-2], dx)
+        #
+        #         self.steps.append(dx)
+        #     else:
+        #         integrator = ode(self.__gradient__).set_integrator('dop853', nsteps=nsteps)
+        #         integrator.set_initial_value(self.y0, x0)
+        #
+        #     n += 1
+        #
+        #     #print(n)
+        #
         self.x = np.array(x)
         self.y = np.array(y)
 

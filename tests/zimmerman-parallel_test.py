@@ -24,10 +24,12 @@ def test_model(params):
     alpha = params[0]
     tau = params[1]
     delta = params[2]
+    y0 = params[3]
 
     # progress_bar.update()
 
     model = Zimmerman(omega, alpha, tau, delta)
+    model.y0 = y0 *np.ones(4)
     model.solve()
     smoothness = model.get_smoothness()
 
@@ -41,11 +43,21 @@ taus = [0, 1e-2, 1, 1e2, 1e3, 1e4]
 alphas = [0, 5, 10, 20, 40]
 deltas = [0, 1e-2, 0.1, 0.2, 0.5, 1, 5, 10]
 
+y0_vals = [1e-7, 1e-6, 1e-5, 1e-3, 1e-2, 1e-1]
+
 tau, alpha, delta = np.meshgrid(taus, alphas, deltas)
 
 tau = list(tau.ravel())
 alpha = list(alpha.ravel())
 delta = list(delta.ravel())
+
+y0_par = [y0_vals[0]] *len(tau)
+for y in y0_vals[1:]:
+    y0_par = y0_par + [y]*len(tau)
+
+tau = tau *len(y0_vals)
+alpha = alpha *len(y0_vals)
+delta = delta *len(y0_vals)
 
 def parallel_eval(n_jobs, chunksize=1):
 
@@ -54,7 +66,7 @@ def parallel_eval(n_jobs, chunksize=1):
 
     time_start = time.time()
     pool = Pool(n_jobs)
-    args = zip(alpha, tau, delta)
+    args = zip(alpha, tau, delta, y0_par)
     result = pool.map(test_model, args, chunksize=chunksize)
     pool.close()
     time_end = time.time()
@@ -73,9 +85,9 @@ df_smooth = pd.DataFrame({'points': points,
                           'smooth': smooth,
                           'alpha': alpha,
                           'delta': delta,
-                          'omega_tau': tau})
-
-df_smooth.to_csv('smoothness-default.csv', index=False)
+                          'omega_tau': tau,
+                          'y0': y0_par})
+df_smooth.to_csv('smoothness.csv', index=False)
 
 # jobs = [1, 4, 8, 16, 30, 40]
 #
